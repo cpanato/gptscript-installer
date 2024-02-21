@@ -1,0 +1,49 @@
+name: test-gptscript-action
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  test_gptscript_action:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+
+    permissions: {}
+
+    name: Install gptscript and test presence in path
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.0.0
+      - name: Install gptscript
+        uses: ./
+      - name: Check install!
+        run: gptscript --version
+        shell: bash
+
+  test_gptscript_action_custom:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+
+    permissions: {}
+
+    name: Install Custom gptscript and test presence in path
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.0.0
+      - name: Install gptscript
+        uses: ./
+        with:
+          gptscript-release: '0.1.0'
+      - name: Check install!
+        run: gptscript --version

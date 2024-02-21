@@ -1,0 +1,165 @@
+---
+name: gptscript-installer
+author: cpanato
+description: 'Installs gptscript and includes it in your path'
+branding:
+  icon: 'package'
+  color: 'blue'
+inputs:
+  gptscript-release:
+    description: 'gptscript release version to be installed'
+    required: false
+    default: '0.1.1'
+  install-dir:
+    description: 'Where to install the gptscript binary'
+    required: false
+    default: '$HOME/.gptscript'
+  use-sudo:
+    description: 'set to true if install-dir location requires sudo privs'
+    required: false
+    default: 'false'
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        #!/bin/bash
+        # gptscript install script
+        shopt -s expand_aliases
+        if [ -z "$NO_COLOR" ]; then
+          alias log_info="echo -e \"\033[1;32mINFO\033[0m:\""
+          alias log_error="echo -e \"\033[1;31mERROR\033[0m:\""
+        else
+          alias log_info="echo \"INFO:\""
+          alias log_error="echo \"ERROR:\""
+        fi
+        set -e
+
+        mkdir -p ${{ inputs.install-dir }}
+
+        shaprog() {
+          case ${{ runner.os }} in
+            Linux)
+              sha256sum --ignore-missing --check $2
+              ;;
+            macOS)
+              shasum -a256 --ignore-missing --check $2
+              ;;
+            Windows)
+              powershell -command "(Get-FileHash $1 -Algorithm SHA256 | Select-Object -ExpandProperty Hash).ToLower() -eq (Get-Content $2)"
+              ;;
+            *)
+              log_error "unsupported OS ${{ runner.os }}"
+              exit 1
+              ;;
+          esac
+        }
+
+        trap "popd >/dev/null" EXIT
+
+        pushd ${{ inputs.install-dir }} > /dev/null
+
+        case ${{ runner.os }} in
+          Linux)
+            case ${{ runner.arch }} in
+              X64)
+                desired_gptscript_filename='gptscript-v${{ inputs.gptscript-release }}-linux-amd64.tar.gz'
+                ;;
+
+              ARM64)
+                desired_gptscript_filename='gptscript-v${{ inputs.gptscript-release }}-linux-arm64.tar.gz'
+                ;;
+
+              *)
+                log_error "unsupported architecture $arch"
+                exit 1
+                ;;
+            esac
+            ;;
+
+          macOS)
+            case ${{ runner.arch }} in
+              X64)
+                desired_gptscript_filename='gptscript-v${{ inputs.gptscript-release }}-macOS-universal.tar.gz'
+                ;;
+
+              ARM64)
+                desired_gptscript_filename='gptscript-v${{ inputs.gptscript-release }}-macOS-universal.tar.gz'
+                ;;
+
+              *)
+                log_error "unsupported architecture $arch"
+                exit 1
+                ;;
+            esac
+            ;;
+
+          Windows)
+            case ${{ runner.arch }} in
+              X64)
+                desired_gptscript_filename='gptscript-v${{ inputs.gptscript-release }}-windows-amd64.zip'
+                ;;
+              *)
+                log_error "unsupported architecture $arch"
+                exit 1
+                ;;
+            esac
+            ;;
+          *)
+            log_error "unsupported architecture $arch"
+            exit 1
+            ;;
+        esac
+
+        SUDO=
+        if "${{ inputs.use-sudo }}" == "true" && command -v sudo >/dev/null; then
+          SUDO=sudo
+        fi
+
+
+        semver='^([0-9]+\.){0,2}(\*|[0-9]+)$'
+        if [[ ${{ inputs.gptscript-release }} =~ $semver ]]; then
+          log_info "gptscript version '${{ inputs.gptscript-release }}' requested"
+        else
+          log_error "Unable to validate requested gptscript version: '${{ inputs.gptscript-release }}'"
+          exit 1
+        fi
+
+        # Download custom gptscript
+        log_info "Downloading platform-specific version 'v${{ inputs.gptscript-release }}' of gptscript...\n      https://github.com/gptscript-ai/gptscript/releases/download/v${{ inputs.gptscript-release }}/${desired_gptscript_filename}"
+        $SUDO curl -sL https://github.com/gptscript-ai/gptscript/releases/download/v${{ inputs.gptscript-release }}/${desired_gptscript_filename} -o ${desired_gptscript_filename}
+        $SUDO curl -sL https://github.com/gptscript-ai/gptscript/releases/download/v${{ inputs.gptscript-release }}/checksums.txt -o checksums.txt
+
+        if [[ ${{ runner.os }} == "Windows" ]]; then
+          log_info ">>> '${{ runner.os }}'"
+          filesha256=$(cat checksums.txt | grep ${desired_gptscript_filename} | cut -d' ' -f1)
+          echo "$filesha256" > .expected-hash.sha256
+          cat .expected-hash.sha256
+          shaprog ${desired_gptscript_filename} .expected-hash.sha256
+        else
+          log_info ">>> '${{ runner.os }}'"
+          shaprog ${desired_gptscript_filename} checksums.txt
+        fi
+
+        ret=$?
+        if [[ $ret -eq 0 ]]; then
+          log_info "unpacking!"
+
+          if [[ "${desired_gptscript_filename}" == *".zip"* ]]; then
+            $SUDO unzip "${desired_gptscript_filename}" -d "${{ inputs.install-dir }}"
+          else
+            $SUDO tar xzf "${desired_gptscript_filename}" -C "${{ inputs.install-dir }}"
+          fi
+          $SUDO rm -f checksums.txt
+          $SUDO rm -f "${desired_gptscript_filename}"
+          log_info "Installation complete!"
+        else
+          log_error "Unable to validate gptscript version: '${{ inputs.gptscript-release }}'"
+          exit 1
+        fi
+    - if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+      run: echo "${{ inputs.install-dir }}" >> $GITHUB_PATH
+      shell: bash
+    - if: ${{ runner.os == 'Windows' }}
+      run: echo "${{ inputs.install-dir }}" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      shell: pwsh
