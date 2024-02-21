@@ -26,7 +26,7 @@ jobs:
     name: Install gptscript and test presence in path
     steps:
       - name: Install gptscript
-        uses: cpanato/vagptscriptult-installer@main
+        uses: cpanato/gptscript-installer@main
         with:
           gptscript-release: '0.1.1'
       - name: Check install!
