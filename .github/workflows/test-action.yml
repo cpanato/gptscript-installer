@@ -44,6 +44,6 @@ jobs:
       - name: Install gptscript
         uses: ./
         with:
-          gptscript-release: '0.1.3'
+          gptscript-release: '0.1.4'
       - name: Check install!
         run: gptscript --version
