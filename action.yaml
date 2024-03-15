@@ -9,7 +9,7 @@ inputs:
   gptscript-release:
     description: 'gptscript release version to be installed'
     required: false
-    default: '0.1.5'
+    default: '0.2.1'
   install-dir:
     description: 'Where to install the gptscript binary'
     required: false
