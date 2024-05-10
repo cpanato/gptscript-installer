@@ -11,7 +11,7 @@ Add the following entry to your Github workflow YAML file:
 ```yaml
 uses: cpanato/gptscript-installer@main
 with:
-  gptscript-release: '0.5.0' # optional
+  gptscript-release: '0.6.0' # optional
 ```
 
 Example using a pinned version:
@@ -28,7 +28,7 @@ jobs:
       - name: Install gptscript
         uses: cpanato/gptscript-installer@main
         with:
-          gptscript-release: '0.5.0'
+          gptscript-release: '0.6.0'
       - name: Check install!
         run: gptscript --version
 ```
